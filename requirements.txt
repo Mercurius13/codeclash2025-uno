@@ -1,0 +1,17 @@
+# FastAPI WebSocket Backend
+fastapi
+uvicorn
+
+# GNN Model (PyTorch + PyG)
+torch
+torch-geometric
+scikit-learn
+pandas
+numpy
+
+# RL Agent (Stable-Baselines3)
+stable-baselines3
+gym
+
+# WebSockets (Optional for frontend/server interaction)
+websockets
