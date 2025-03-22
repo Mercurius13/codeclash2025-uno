@@ -18,6 +18,9 @@ os.makedirs(SAVE_DIR, exist_ok=True)
 RETRAINED_MODEL_PATH = os.path.join(SAVE_DIR, "gnn_retrained_latest.pth")
 
 INPUT_DIM = 18
+PACKET_LOSS_PROB = 0.1  # 10% packet loss
+MIN_LATENCY = 0.1  # 100ms minimum delay
+MAX_LATENCY = 0.5  # 500ms maximum delay (jitter range)
 
 def save_model(model, path=RETRAINED_MODEL_PATH):
     torch.save(model.state_dict(), path)
@@ -26,6 +29,21 @@ def save_model(model, path=RETRAINED_MODEL_PATH):
 def load_model(path, input_dim):
     print(f"[Load] Loading model from {path}")
     return load_trained_gnn_model(path, input_dim)
+
+def evaluate_model(model, test_data):
+    model.eval()
+    correct = 0
+    total = len(test_data)
+    with torch.no_grad():
+        for x, y in test_data:
+            x_tensor = torch.tensor(x, dtype=torch.float)
+            edge_index = torch.tensor([[0], [0]], dtype=torch.long)
+            data = type('Data', (object,), {'x': x_tensor, 'edge_index': edge_index})
+            output = model(data)
+            predicted = output.argmax(dim=1).item()
+            if predicted == y:
+                correct += 1
+    return correct / total if total > 0 else 0
 
 if os.path.exists(RETRAINED_MODEL_PATH):
     model_gnn = load_model(RETRAINED_MODEL_PATH, INPUT_DIM)
@@ -36,6 +54,8 @@ model_gnn.train()
 
 optimizer = torch.optim.Adam(model_gnn.parameters(), lr=0.001)
 loss_fn = torch.nn.CrossEntropyLoss()
+
+recent_data = []
 
 def model_predict(x_numpy):
     x_tensor = torch.tensor(x_numpy, dtype=torch.float)
@@ -52,8 +72,6 @@ devices = ["Camera A1", "Smart Lock B2", "Thermostat T3"]
 def rl_select_action(prediction):
     return random.choice(["No Action", "Quarantine", "Patch", "Block IP"])
 
-recent_data = []
-
 @app.websocket("/ws/threats")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
@@ -67,6 +85,13 @@ async def websocket_endpoint(websocket: WebSocket):
 
 async def broadcast_threat(data):
     for client in connected_clients.copy():
+        if random.random() < PACKET_LOSS_PROB:
+            print("[Network] Packet lost, skipping message")
+            continue
+
+        latency = random.uniform(MIN_LATENCY, MAX_LATENCY)
+        await asyncio.sleep(latency)
+        
         try:
             await client.send_json(data)
         except:
@@ -144,8 +169,14 @@ async def online_learning_loop():
             loss.backward()
             optimizer.step()
 
-            print(f"[Retrain] Loss: {loss.item():.4f}")
-            save_model(model_gnn)
+            new_accuracy = evaluate_model(model_gnn, recent_data[-100:])
+            previous_accuracy = evaluate_model(load_model(RETRAINED_MODEL_PATH, INPUT_DIM), recent_data[-100:])
+
+            if new_accuracy > previous_accuracy:
+                print(f"[Retrain] New model accuracy ({new_accuracy:.4f}) is better than previous ({previous_accuracy:.4f}). Saving model.")
+                save_model(model_gnn)
+            else:
+                print(f"[Retrain] New model accuracy ({new_accuracy:.4f}) is worse or equal to previous ({previous_accuracy:.4f}). Not saving model.")
         else:
             print("[Retrain] Not enough data yet to retrain.")
 

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { motion } from "framer-motion";
 
 const Dashboard = () => {
@@ -55,6 +55,16 @@ const Dashboard = () => {
     },
   ];
 
+  const total = metrics.truePositives + metrics.falsePositives + metrics.trueNegatives + metrics.falseNegatives;
+  const pieData = [
+    { name: "TP: True Positives", value: metrics.truePositives, percent: total ? ((metrics.truePositives / total) * 100).toFixed(2) : 0 },
+    { name: "FP: False Positives", value: metrics.falsePositives, percent: total ? ((metrics.falsePositives / total) * 100).toFixed(2) : 0 },
+    { name: "TN: True Negatives", value: metrics.trueNegatives, percent: total ? ((metrics.trueNegatives / total) * 100).toFixed(2) : 0 },
+    { name: "FN: False Negatives", value: metrics.falseNegatives, percent: total ? ((metrics.falseNegatives / total) * 100).toFixed(2) : 0 },
+  ];
+
+  const COLORS = ["#4caf50", "#f44336", "#2196f3", "#ff9800"];
+
   return (
     <div className="p-6 bg-black min-h-screen text-white flex flex-col space-y-6">
       <div className="flex flex-col md:flex-row gap-4">
@@ -99,6 +109,38 @@ const Dashboard = () => {
         </Card>
       </div>
 
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+      <Card className="bg-gray-900">
+        <CardContent className="flex flex-row items-center justify-between p-6">
+          {/* Left: Pie Chart */}
+          <div className="w-2/3">
+            <h2 className="text-xl font-bold mb-4 text-white">Prediction Metrics Pie Chart</h2>
+            <ResponsiveContainer width="100%" height={350}>
+              <PieChart>
+                <Pie 
+                  data={pieData} 
+                  dataKey="value" 
+                  nameKey="name" 
+                  cx="50%" 
+                  cy="50%" 
+                  outerRadius={120} 
+                  fill="#8884d8" 
+                  label={({ name, percent }) => `${name}: ${percent}%`}
+                >
+                  {pieData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value, name) => [`${value} (${(value / total * 100).toFixed(2)}%)`, name]} />
+                <Legend verticalAlign="middle" align="right" layout="vertical" />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
+
+      </motion.div> 
+      
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
         <Card className="border border-red-500 max-h-[400px] overflow-y-auto bg-gray-900">
           <CardContent className="p-4 space-y-4">
