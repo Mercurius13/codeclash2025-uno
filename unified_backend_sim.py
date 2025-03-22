@@ -13,14 +13,12 @@ app = FastAPI()
 connected_clients = []
 threat_queue = asyncio.Queue()
 
-# --- Model Save Path ---
 SAVE_DIR = "saved_models"
 os.makedirs(SAVE_DIR, exist_ok=True)
 RETRAINED_MODEL_PATH = os.path.join(SAVE_DIR, "gnn_retrained_latest.pth")
 
 INPUT_DIM = 18
 
-# --- Save and Load Helpers ---
 def save_model(model, path=RETRAINED_MODEL_PATH):
     torch.save(model.state_dict(), path)
     print(f"[Retrain] Model saved to {path}")
@@ -29,18 +27,16 @@ def load_model(path, input_dim):
     print(f"[Load] Loading model from {path}")
     return load_trained_gnn_model(path, input_dim)
 
-# --- Load Latest or Default Model ---
 if os.path.exists(RETRAINED_MODEL_PATH):
     model_gnn = load_model(RETRAINED_MODEL_PATH, INPUT_DIM)
 else:
     model_gnn = load_model("gnn_security_model.pth", INPUT_DIM)
 
-model_gnn.train()  # Enable train mode for retraining
+model_gnn.train()
 
 optimizer = torch.optim.Adam(model_gnn.parameters(), lr=0.001)
 loss_fn = torch.nn.CrossEntropyLoss()
 
-# SHAP Explainer (KernelExplainer)
 def model_predict(x_numpy):
     x_tensor = torch.tensor(x_numpy, dtype=torch.float)
     edge_index = torch.tensor([[0], [0]], dtype=torch.long)
@@ -53,12 +49,10 @@ explainer = shap.KernelExplainer(model_predict, np.random.rand(1, INPUT_DIM))
 
 devices = ["Camera A1", "Smart Lock B2", "Thermostat T3"]
 
-# Action simulation (RL stub)
 def rl_select_action(prediction):
     return random.choice(["No Action", "Quarantine", "Patch", "Block IP"])
 
-# --- Store recent data for retraining ---
-recent_data = []  # Buffer: (features, label)
+recent_data = []
 
 @app.websocket("/ws/threats")
 async def websocket_endpoint(websocket: WebSocket):
@@ -66,7 +60,7 @@ async def websocket_endpoint(websocket: WebSocket):
     connected_clients.append(websocket)
     try:
         while True:
-            await asyncio.sleep(10)  # Keep alive
+            await asyncio.sleep(10)
     except:
         connected_clients.remove(websocket)
         print("Client disconnected")
@@ -83,7 +77,7 @@ async def broadcast_threat(data):
 async def start_background_tasks():
     asyncio.create_task(simulate_attack_loop())
     asyncio.create_task(process_threats())
-    asyncio.create_task(online_learning_loop())  # 🔥 Online retrain loop
+    asyncio.create_task(online_learning_loop())
 
 async def process_threats():
     while True:
@@ -103,10 +97,9 @@ async def simulate_attack_loop():
             output = model_gnn(data)
             prediction = output.argmax(dim=1).item()
 
-        actual = random.choice([0, 1])  # Random label
+        actual = random.choice([0, 1])
         action = rl_select_action(prediction)
 
-        # SHAP explanation
         shap_values = explainer.shap_values(fake_log)
         top_features = np.argsort(np.abs(shap_values[0][0]))[::-1][:3]
 
@@ -124,7 +117,6 @@ async def simulate_attack_loop():
             "feature_importance": feature_importance
         }
 
-        # Append to retrain buffer
         recent_data.append((fake_log[0], actual))
         if len(recent_data) > 500:
             recent_data.pop(0)
@@ -133,13 +125,12 @@ async def simulate_attack_loop():
         await threat_queue.put(threat_data)
         await asyncio.sleep(2)
 
-# --- 🔥 Online Learning Loop (with Save) ---
 async def online_learning_loop():
     while True:
-        await asyncio.sleep(60)  # Retrain every 60 seconds
+        await asyncio.sleep(60)
         if len(recent_data) >= 50:
             print("[Retrain] Updating model with recent data...")
-            batch = random.sample(recent_data, 50)  # Random mini-batch
+            batch = random.sample(recent_data, 50)
             features_batch, labels_batch = zip(*batch)
             X = torch.tensor(np.array(features_batch), dtype=torch.float)
             y = torch.tensor(labels_batch, dtype=torch.long)
@@ -154,8 +145,6 @@ async def online_learning_loop():
             optimizer.step()
 
             print(f"[Retrain] Loss: {loss.item():.4f}")
-
-            # 🔥 Save updated model (overwrite)
             save_model(model_gnn)
         else:
             print("[Retrain] Not enough data yet to retrain.")

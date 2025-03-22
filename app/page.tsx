@@ -1,4 +1,3 @@
-// app/page.tsx or app/page.jsx
 import Dashboard from './Dashboard';
 
 export default function Home() {

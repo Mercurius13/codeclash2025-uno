@@ -37,7 +37,6 @@ const Dashboard = () => {
     return () => ws.close();
   }, []);
 
-  // Shortened Labels for Graph
   const metricsData = [
     { name: "TP", value: metrics.truePositives },
     { name: "FP", value: metrics.falsePositives },
@@ -58,9 +57,7 @@ const Dashboard = () => {
 
   return (
     <div className="p-6 bg-black min-h-screen text-white flex flex-col space-y-6">
-      {/* Top Graphs Side by Side */}
       <div className="flex flex-col md:flex-row gap-4">
-        {/* Prediction Metrics */}
         <Card className="bg-gray-900 flex-1">
           <CardContent className="p-4">
             <h2 className="text-xl font-semibold mb-4 text-white">Prediction Metrics</h2>
@@ -72,7 +69,6 @@ const Dashboard = () => {
                 <Bar dataKey="value" fill="#ef4444" radius={[8, 8, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
-            {/* Legend for Prediction Metrics */}
             <div className="text-sm text-gray-400 text-center mt-2">
               TP = True Positives | FP = False Positives
             </div>
@@ -82,7 +78,6 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Identification Success */}
         <Card className="bg-gray-900 flex-1">
           <CardContent className="p-4">
             <h2 className="text-xl font-semibold mb-4 text-white">Identification Accuracy</h2>
@@ -94,7 +89,6 @@ const Dashboard = () => {
                 <Bar dataKey="value" fill="#3b82f6" radius={[8, 8, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
-            {/* Legend for Identification Accuracy */}
             <div className="text-sm text-gray-400 text-center mt-2">
               Successful = Correctly Detected
             </div>
@@ -105,12 +99,10 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      {/* Threat Logs Below Graphs */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
         <Card className="border border-red-500 max-h-[400px] overflow-y-auto bg-gray-900">
           <CardContent className="p-4 space-y-4">
             <h2 className="text-xl font-bold mb-2 text-white">Threat Logs</h2>
-            {/* Only show latest 3 logs */}
             {threats.slice(0, 3).map((threat, idx) => (
               <div key={idx} className="border-b border-gray-700 pb-2 mb-2">
                 <p className="text-lg font-semibold">Device: {threat.device}</p>
